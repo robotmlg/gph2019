@@ -1,4 +1,5 @@
 import time, string
+from collections import deque
 # operations
 #
 # Bowser	    destroys alphabetically first letter
@@ -11,44 +12,48 @@ import time, string
 # Pirhana	    Swap the first and second halves, adding a space
 
 def peaches(startWord, endWord, operations):
-    return peaches_impl(startWord, endWord, operations, [])
-
-
-def peaches_impl(startWord, endWord, operations, stepsSoFar):
-
-    if len(startWord) == 0:
-        return None
-    if startWord == endWord:
-        return stepsSoFar
-    if len(stepsSoFar) >= 10:
-        return None
-
-    '''
-    print(startWord + ' ' + endWord + ' ' + str(stepsSoFar))
-    time.sleep(0.25)
-    '''
-
-    newOperations = operations.copy()
-    ## disallow two Bullet Bills in a row
-    if len(stepsSoFar) > 0 and stepsSoFar[-1][0].startswith('BILL'):
-        newOperations.remove('BILL')
-    ## disallow two Shy Guys in a row
-    if (len(stepsSoFar) > 0 and stepsSoFar[-1][0].startswith('SHY')) or ('L' not in startWord and 'R' not in startWord):
-        newOperations.remove('SHY')
-
-    uops = expandUops(startWord, newOperations)
     
-    for op in uops:
-        result = operate(startWord, op)
-        newSteps = stepsSoFar.copy()
-        newSteps.append(result)
+    queue = deque()
+    visited = []
+    # key -> parent, action to reach
+    meta = {}
+
+    root = startWord
+    meta[root] = (None, None)
+    queue.append(root)
+
+    while queue:
         
-        ans = peaches_impl(result[1], endWord, operations, newSteps)
+        word = queue.popleft()
 
-        if ans is not None:
-            return ans
+        if word == endWord:
+            return buildSeq(word, meta)
 
-    return None
+        uops = expandUops(word, operations)
+        childrenWords = [operate(word, uop) for uop in uops]
+
+        for (action, child) in childrenWords:
+            if child in visited or len(child) <= 0 or child == word:
+                continue
+
+            if child not in queue:
+                meta[child] = (word, action)
+                queue.append(child)
+
+        visited.append(word)
+                
+
+def buildSeq(word, meta):
+    actions = []
+
+    curr = word
+    while meta[curr][0] is not None:
+        prev = meta[curr]
+        actions.append(prev)
+        curr = prev[0]
+
+    actions.reverse()
+    return actions
 
 
 def expandUops(word, operations):
@@ -57,6 +62,8 @@ def expandUops(word, operations):
         uops.append(('BOWSER', None))
     if 'SHY' in operations:
         uops.append(('SHY', None))
+    if 'BOO' in operations:
+        uops.append(('BOO', None))
     if 'BILL' in operations:
         for letter in string.ascii_uppercase:
             uops.append(('BILL', letter))
@@ -72,6 +79,8 @@ def operate(word, uop):
         return ('BOWSER', bowser(word))
     elif operation == 'SHY':
         return ('SHY', shy(word))
+    elif operation == 'BOO':
+        return ('BOO', boo(word))
     elif operation == 'BILL':
         letter = uop[1]
         return ('BILL ' + letter, bill(word, letter))
@@ -101,9 +110,14 @@ def bloop(word, letter):
     letters.insert(-1, letter)
     return ''.join(letters)
 
+def boo(word):
+    temp = word.replace('A', 'ue').replace('E', 'ai').replace('I', 'eo').replace('O', 'iu').replace('U', 'oa')
+    return temp.upper()
 
 ## endregion operations
 
-# print(peaches('UNAGI','UNI',['BOWSER']))
-print(peaches('LARD', 'SALAD', ['BOWSER', 'SHY', 'BILL', 'BLOOP']))
+# print(peaches('UNAGI','UNI',['BOWSER', 'SHY', 'BILL', 'BLOOP']))
+# print(peaches('LARD', 'SALAD', ['BOWSER', 'SHY', 'BILL', 'BLOOP']))
+# print(peaches('GOLD', 'AIOLI', ['BLOOP', 'BOWSER', 'BILL']))
+print(peaches('CLAMS', 'EGGS', ['BOWSER', 'BLOOP', 'BILL']))
 
