@@ -1,5 +1,6 @@
 import time, string
-from collections import deque
+from heapq import *
+from Levenshtein import distance
 # operations
 #
 # Bowser	    destroys alphabetically first letter
@@ -13,18 +14,18 @@ from collections import deque
 
 def peaches(startWord, endWord, operations):
     
-    queue = deque()
+    queue = []
     visited = []
     # key -> parent, action to reach
     meta = {}
 
     root = startWord
     meta[root] = (None, None)
-    queue.append(root)
+    heappush(queue, (0, root))
 
     while queue:
         
-        word = queue.popleft()
+        word = heappop(queue)[1]
 
         if word == endWord:
             return buildSeq(word, meta)
@@ -38,7 +39,7 @@ def peaches(startWord, endWord, operations):
 
             if child not in queue:
                 meta[child] = (word, action)
-                queue.append(child)
+                heappush(queue, (distance(child, endWord), child))
 
         visited.append(word)
                 
@@ -64,12 +65,16 @@ def expandUops(word, operations):
         uops.append(('SHY', None))
     if 'BOO' in operations:
         uops.append(('BOO', None))
+    if 'PIRHANA' in operations:
+        uops.append(('PIRHANA', None))
+    if 'WIGGLER' in operations:
+        uops.extend([('WIGGLER', i) for i in range(0, len(word))])
+    if 'LAKITU' in operations:
+        uops.extend([('LAKITU', i) for i in range(0, len(word))])
     if 'BILL' in operations:
-        for letter in string.ascii_uppercase:
-            uops.append(('BILL', letter))
+        uops.extend([('BILL', l) for l in string.ascii_uppercase])
     if 'BLOOP' in operations:
-        for letter in string.ascii_uppercase:
-            uops.append(('BLOOP', letter))
+        uops.extend([('BLOOP', l) for l in string.ascii_uppercase])
 
     return uops
 
@@ -81,12 +86,24 @@ def operate(word, uop):
         return ('SHY', shy(word))
     elif operation == 'BOO':
         return ('BOO', boo(word))
+    elif operation == 'PIRHANA':
+        return ('PIRHANA', pirhana(word))
+    elif operation == 'WIGGLER':
+        index = uop[1]
+        letter = word[index]
+        return ('WIGGLER ' + letter + '@' + str(index), wiggler(word, index))
+    elif operation == 'LAKITU':
+        index = uop[1]
+        letter = word[index]
+        return ('WIGGLER ' + letter + '@' + str(index), wiggler(word, index))
     elif operation == 'BILL':
         letter = uop[1]
         return ('BILL ' + letter, bill(word, letter))
     elif operation == 'BLOOP':
         letter = uop[1]
         return ('BLOOP ' + letter, bloop(word, letter))
+    else:
+        raise RuntimeError('Cannot do operation ' + str(uop))
         
 ## region operations
 
@@ -110,14 +127,54 @@ def bloop(word, letter):
     letters.insert(-1, letter)
     return ''.join(letters)
 
+def wiggler(word, index):
+    letter = word[index]
+    letterIdx = (ord(letter) - ord('A')) % 26
+    nextLetter = chr(ord('A') + letterIdx)
+    prevLetter = chr(ord('A') - letterIdx)
+
+    return word[0:index] + nextLetter + prevLetter + word[index+1:]
+
 def boo(word):
     temp = word.replace('A', 'ue').replace('E', 'ai').replace('I', 'eo').replace('O', 'iu').replace('U', 'oa')
     return temp.upper()
 
+def lakitu(word, index):
+    return word[index:] + word[:index]
+
+def pirhana(word):
+    index = len(word) // 2
+    return word[index:] + ' ' + word[:index]
+
 ## endregion operations
 
-# print(peaches('UNAGI','UNI',['BOWSER', 'SHY', 'BILL', 'BLOOP']))
-# print(peaches('LARD', 'SALAD', ['BOWSER', 'SHY', 'BILL', 'BLOOP']))
-# print(peaches('GOLD', 'AIOLI', ['BLOOP', 'BOWSER', 'BILL']))
-print(peaches('CLAMS', 'EGGS', ['BOWSER', 'BLOOP', 'BILL']))
+def main():
+    # tier 6
+    print(peaches('DEMON', 'LEMON EGGNOG', ['SHY', 'BILL', 'BOO', 'PIRHANA', 'BLOOP', 'LAKITU']))
+    print(peaches('SNOW', 'ASIAN SQUID', ['BILL', 'BOO', 'WIGGLER', 'PIRHANA', 'BLOOP', 'LAKITU']))
+    print(peaches('DRESS', 'TONS OF NOODLES', ['SHY', 'BILL', 'BOO', 'PIRHANA', 'BLOOP', 'LAKITU']))
+    print(peaches('TIGHTS', 'CRAZY EIGHT', ['BOWSER', 'SHY', 'BILL', 'WIGGLER', 'PIRHANA', 'LAKITU']))
 
+    # tier 5
+    print(peaches('EASEL', 'WATER EEL', ['BILL', 'WIGGLER', 'PIRHANA', 'BLOOP', 'LAKITU']))
+    print(peaches('SHRINE', 'REFRESHROOM', ['BOWSER', 'SHY', 'BOO', 'WIGGLER', 'BLOOP', 'LAKITU']))
+    print(peaches('ETHICS', 'ANISE TAHINI', ['BOWSER', 'BOO', 'WIGGLER', 'PIRHANA', 'BLOOP', 'LAKITU']))
+
+    # tier 4
+    print(peaches('HAY', 'CANDY HEN', ['SHY', 'WIGGLER', 'PIRHANA', 'BLOOP', 'LAKITU']))
+    print(peaches('TURF', 'PARFAIT', ['BILL', 'BOO', 'WIGGLER', 'PIRHANA', 'LAKITU']))
+    print(peaches('HERON', 'ONIGIRI', ['BOWSER', 'BOO', 'WIGGLER', 'BLOOP', 'LAKITU']))
+
+    # tier 3
+    print(peaches('MAIL', 'ECLAIR', ['BOWSER', 'SHY', 'BILL', 'WIGGLER']))
+    print(peaches('GOLD', 'AIOLI', ['BOWSER', 'SHY', 'BILL', 'BOO', 'BLOOP']))
+
+    # tier 2
+    print(peaches('LARD', 'SALAD', ['BOWSER', 'SHY', 'BILL', 'BLOOP']))
+    print(peaches('CLAMS', 'EGGS', ['BOWSER', 'BLOOP', 'BILL']))
+
+    # tier 1
+    print(peaches('UNAGI','UNI',['BOWSER']))
+
+if __name__ == "__main__":
+    main()
